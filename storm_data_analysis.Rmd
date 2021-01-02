@@ -1,0 +1,105 @@
+---
+title: "Storm Data Analysis"
+author: "April Zhao"
+date: "1/2/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## **Requirements:** 
+- Title: briefly summarizes the data analysis
+- Synopsis: describes and summarizes the analysis in at most 10 complete sentences
+
+  
+## **Synopsis**
+
+## **Data Processing** 
+To get the data ready to be analyzed, we first need to download the data to the directory and then preprpocess the data so it is in a format ready for us to use.
+
+#### **Downloading the Data**
+```{r download,cache=TRUE}
+## The url is where the storm dataset is located and their filenames.
+url <- "https://d396qusza40orc.cloudfront.net/repdata%2Fdata%2FStormData.csv.bz2"
+fileName <- "./data/storm.csv.bz2"
+
+
+## Creates a data directory where we could download the data in.
+if (!dir.exists("data")) {
+  dir.create("data")
+}
+
+## Download the zipped dataset to the directory
+if (!file.exists(fileName)) {
+  download.file(url, fileName)
+}
+
+## Read in the dataframe
+storm <- read.csv(fileName)
+```
+
+Now, since we have the data already loaded, we could take a look at what the data frame looks like.
+```{r peek}
+names(storm)
+dim(storm)
+```
+
+Since the objective of this data analysis is to find the types of events (as indicated in the `EVTYPE` variable) are most harmful with respect to population health and economic consequences, it would be helpful for us to look at what event types we have, and how many each has:
+```{r table}
+## Counts the occurrences of each event type
+type <- table(storm$EVTYPE)
+
+## A peak at how many unique event types there are
+length(type)
+
+## A peak at the count of the first 10 event types
+head(type, 10)
+```
+
+Now, since we have too many event types, it would be a good idea to keep the event types that occur the most frequently in our analysis. For example, it would be better if we keep the event types such as "BLIZZARD" and "AVALANCHE" while discarding the ones like "?" and "APACHE COUNTY" since they don't offer much insight to the data analysis. In this analysis, I will set a threshold of 150 in count, and we will be only using the event types that has more than 150 occurrences.
+
+```{r subset}
+## Reset type from a table to a data frame
+typeDf <- cbind(names(type), type)
+
+## Subset the ones with occurrences greater than 150.
+type <- subset(typeDf, type > 150)
+
+## Look at how many items we are left with now
+dim(type)
+head(type)
+```
+
+As shown above, we have narrowed the types of events to 60 events. Now, we will use this `type` data frame to subset the original `storm` data frame with the events that match the ones on this list.
+```{r clean}
+storm <- subset(storm, EVTYPE %in% type[,1])
+dim(storm)
+```
+
+Notice how we are able to remove 5877 rows of data with irrelevant types that we won't be using in this analysis.
+
+
+
+## **Results**
+
+#### **Altering the data frame**
+
+
+## More Requirements
+  - Presents the results
+- At least one figure containing a plot
+- No more than three figures (figures may have multiple plots in them)
+- Show all code in the analysis document.
+  - Ensure that echo = TRUE for every code chunk.
+  
+
+
+### Questions to Address
+1. Across the US, which types of events (as indicated in the EVTYPE variable) are most harmful with respect to population health?
+2. Across the United States, which Types of events have the greatest economic consequences?
+
+
+
+
