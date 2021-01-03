@@ -8,15 +8,23 @@ output: html_document
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 ```
-
-## **Requirements:** 
-- Title: briefly summarizes the data analysis
-- Synopsis: describes and summarizes the analysis in at most 10 complete sentences
-
   
 ## **Synopsis**
+This html file is a documentation of the data analysis project exploring the US National Oceanic and Atmospheric Administration's storm database. We will be primarily answering two questions:
 
-## **Data Processing** 
+1. Across the US, which types of events (as indicated in the EVTYPE variable) are most harmful with respect to population health?
+2. Across the United States, which Types of events have the greatest economic consequences?
+
+The documentation has the following parts: a **data processing** part that handles the retrieval and formatting of the dataset; a **results** section that explores and solves the two questions, and a **discussions** section that discusses the validity of the conclusions from the results section.
+
+
+## **Data Processing**
+(Loading necessary packages)
+```{r load, echo = FALSE}
+library(dplyr)
+library(ggplot2)
+library(lubridate)
+```
 To get the data ready to be analyzed, we first need to download the data to the directory and then preprpocess the data so it is in a format ready for us to use.
 
 #### **Downloading the Data**
@@ -73,7 +81,7 @@ head(type)
 ```
 
 As shown above, we have narrowed the types of events to 60 events. Now, we will use this `type` data frame to subset the original `storm` data frame with the events that match the ones on this list.
-```{r clean}
+```{r clean, cache = TRUE}
 storm <- subset(storm, EVTYPE %in% type[,1])
 dim(storm)
 ```
@@ -89,11 +97,11 @@ Now, with a clean data set, we could start with the analysis of the data frame t
 2. Across the United States, which Types of events have the greatest economic consequences?
 
 #### **Question 1**
+
 Question 1 deals with the types of events that are the most harmful with respect to population health. The term "population health" refers to the fatality and injury brought by this storm. Therefore, we will be referring to the columns `FATALITIES` and `INJURIES` to answer this question.
 
 First, calculate the average fatality and injury caused by each storm:
 ```{r average}
-library(dplyr)
 ## Group by event type
 groupedStorm <- group_by(storm, EVTYPE)
 
@@ -111,8 +119,7 @@ head(injury)
 ```
 
 Here is a plot showing the correlation between injuries and fatalities count:
-```{r boxplot}
-library(ggplot2)
+```{r correlation}
 totalHarm <- full_join(fatality, injury, by = "EVTYPE")
 g <- ggplot(totalHarm, aes(injuries, fatalities))
 g + geom_point()
@@ -140,18 +147,69 @@ From the results above, we have found the TOP 5 most dangerous events, they are:
 - **TORNADO** with a total harmful level of 1.69
 - **AVALANCHE** with a total harmful level of 1.60
 
-## More Requirements
-  - Presents the results
-- At least one figure containing a plot
-- No more than three figures (figures may have multiple plots in them)
-- Show all code in the analysis document.
-  - Ensure that echo = TRUE for every code chunk.
+
+2. Across the United States, which Types of events have the greatest economic consequences?
+
+#### **Question 2**
+While question 1 investigates the most harmful events for population health, question 2 dives into the types of events that cause the greatest economic consequences. We will be using the columns `PROPDMG` and `CROPDMG` to answer this question.
+
+
+Unlike fatality vs injury, property and crop damage doesn't have to be weighted. Instead, they just have to be summed together. Therefore, we will create the following table summing the average total damage caused by each event:
+```{r dmg}
+## Find the average of property damage and crop damage grouped by the event type.
+prop <- summarise(groupedStorm, propertyDamage = mean(PROPDMG, na.rm = TRUE))
+
+crop <- summarise(groupedStorm, cropDamage = mean(CROPDMG, na.rm = TRUE))
+
+## Join the two data frames into one and arrange them from the most damage to the least
+totalDmg <- full_join(prop, crop, by = "EVTYPE") %>%
+  mutate(totalDmg = propertyDamage + cropDamage) %>%
+  arrange(desc(totalDmg))
   
+head(totalDmg,5)
+```
 
+From the previous table, we could already tell the 5 most damaging events economic-wise. They are:
 
-### Questions to Address
+- **HURRICANE** with a total damage of 119.85 (units unknown)
+- **RIVER FLOOD** with a total damage of 100.26 (units unknown)
+- **TROPICAL STORM** with a total damage of 78.83 (units unknown)
+- **STORM SURGE** with a total damage of 74.32 (units unknown)
+- **URBAN FLOOD** with a total damage of 57.09 (units unknown)
 
+## **Further Discussion**
 
+However, I would still like to investigate more about this dataset. Unlike fatality and injury, the property value of things may or may not be influenced by inflation, especially because this dataset includes data from a very large period of time, over 60 years. Therefore, I will construct a plot showing the year vs property damage trend below, which would help us to gain insight on whether inflation is adjusted.
+```{r year}
+## Create function to take a substring of the poorly formatted date column
+date_only <- function(char) {
+  if (nchar(char) == 16) {
+    substr(char, 1,8)
+  } else if (nchar(char) == 17) {
+    substr(char,1,9)
+  } else {
+    substr(char,1,10)
+  }
+}
+
+## Change the column to be date objects
+storm$BGN_DATE <- date_only(storm$BGN_DATE)
+storm$BGN_DATE <- mdy(storm$BGN_DATE)
+
+## Remove the missing values from the data frame
+cleanStorm <- 
+  storm %>%
+  filter(!is.na(BGN_DATE))
+
+## Add a new column showing the total damage
+cleanStorm$totalDmg <- cleanStorm$PROPDMG + cleanStorm$CROPDMG
+
+## Graph the begin date vs damage
+h <- ggplot(cleanStorm, aes(BGN_DATE, totalDmg))
+h + geom_line()
+```
+
+From the time-series plot above, we have found that there is significant increase in damage value across the years. Therefore, we have evidence that inflation is not adjusted. This undermines our analysis of the result based on different event types across the 50 year span.
 
 
 
