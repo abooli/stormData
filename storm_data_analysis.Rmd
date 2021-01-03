@@ -83,9 +83,62 @@ Notice how we are able to remove 5877 rows of data with irrelevant types that we
 
 
 ## **Results**
+Now, with a clean data set, we could start with the analysis of the data frame to answer the following two questions:
 
-#### **Altering the data frame**
+1. Across the US, which types of events (as indicated in the EVTYPE variable) are most harmful with respect to population health?
+2. Across the United States, which Types of events have the greatest economic consequences?
 
+#### **Question 1**
+Question 1 deals with the types of events that are the most harmful with respect to population health. The term "population health" refers to the fatality and injury brought by this storm. Therefore, we will be referring to the columns `FATALITIES` and `INJURIES` to answer this question.
+
+First, calculate the average fatality and injury caused by each storm:
+```{r average}
+library(dplyr)
+## Group by event type
+groupedStorm <- group_by(storm, EVTYPE)
+
+# Calculate the average fatality and injury caused by each event and then rearranging the data frame in descending order of the count
+fatality <- 
+  summarise(groupedStorm, fatalities = mean(FATALITIES, na.rm = TRUE)) %>%
+  arrange(desc(fatalities), by_group = FALSE)
+
+injury <- 
+  summarise(groupedStorm, injuries = mean(INJURIES, na.rm = TRUE))  %>%
+  arrange(desc(injuries), by_group = FALSE)
+
+head(fatality)
+head(injury)
+```
+
+Here is a plot showing the correlation between injuries and fatalities count:
+```{r boxplot}
+library(ggplot2)
+totalHarm <- full_join(fatality, injury, by = "EVTYPE")
+g <- ggplot(totalHarm, aes(injuries, fatalities))
+g + geom_point()
+```
+
+From the graph above, we could see that there might be some weak correlation between injuries and fatalities. However, we still want to find the TOP 5 most dangerous event using a smart way. 
+
+One tricky part to answering this question is to collapse the two variables, fatality and injury, into one variable. This requires us to put a value mark for the injury and fatality. In this analysis, we will use a 2:1 ratio for fatality and injury when we calculate a weighted sum of total harm, and we will find the TOP 5 most dangerous event.
+```{r total}
+double_Fatality <- fatality
+double_Fatality$fatalities <- 2* fatality$fatalities
+
+totalHarm <- full_join(double_Fatality, injury, by = "EVTYPE") %>%
+  mutate(harm = fatalities + injuries) %>%
+  arrange(desc(harm))
+
+head(totalHarm, 6)
+```
+
+From the results above, we have found the TOP 5 most dangerous events, they are:
+
+- **EXCESSIVE HEAT** with a total harmful level of 6.16
+- **HEAT** with a total harmful level of 5.18
+- **RIP CURRENTS** with a total harmful level of 2.15
+- **TORNADO** with a total harmful level of 1.69
+- **AVALANCHE** with a total harmful level of 1.60
 
 ## More Requirements
   - Presents the results
@@ -97,8 +150,7 @@ Notice how we are able to remove 5877 rows of data with irrelevant types that we
 
 
 ### Questions to Address
-1. Across the US, which types of events (as indicated in the EVTYPE variable) are most harmful with respect to population health?
-2. Across the United States, which Types of events have the greatest economic consequences?
+
 
 
 
